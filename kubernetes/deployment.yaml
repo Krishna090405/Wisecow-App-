@@ -1,0 +1,83 @@
+Kubernetes Deployment
+
+You need to create Kubernetes manifest files that define how the Wisecow application should be deployed. These files are typically deployment.yaml, service.yaml, and possibly an ingress.yaml for TLS.
+
+Deployment (deployment.yaml)
+
+This YAML file specifies how the Wisecow container will run on Kubernetes:
+
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: wisecow-deployment
+  labels:
+    app: wisecow
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: wisecow
+  template:
+    metadata:
+      labels:
+        app: wisecow
+    spec:
+      containers:
+        - name: wisecow
+          image: <your-docker-repo>/wisecow:latest  # Replace with your image URL
+          ports:
+            - containerPort: 3000
+
+
+Service (service.yaml)
+
+To expose the application inside the Kubernetes cluster:
+
+apiVersion: v1
+kind: Service
+metadata:
+  name: wisecow-service
+spec:
+  selector:
+    app: wisecow
+  ports:
+    - protocol: TCP
+      port: 80
+      targetPort: 3000
+  type: ClusterIP  # Use LoadBalancer if you want external access
+
+
+Ingress with TLS (ingress.yaml)
+
+To expose your application securely over HTTPS:
+
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: wisecow-ingress
+  annotations:
+    nginx.ingress.kubernetes.io/ssl-redirect: "true"
+    nginx.ingress.kubernetes.io/rewrite-target: /
+spec:
+  rules:
+  - host: wisecow.example.com  # Replace with your domain
+    http:
+      paths:
+      - path: /
+        pathType: Prefix
+        backend:
+          service:
+            name: wisecow-service
+            port:
+              number: 80
+  tls:
+  - hosts:
+    - wisecow.example.com  # Replace with your domain
+    secretName: wisecow-tls-secret  # TLS secret with certificates
+
+
+To generate the TLS secret, you can use:
+
+kubectl create secret tls wisecow-tls-secret \
+  --cert=path/to/cert.crt \
+  --key=path/to/cert.key
